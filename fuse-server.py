@@ -9,8 +9,13 @@ import requests
 from lxml import html
 from playwright.sync_api import sync_playwright
 
+scp_cache={}
+oft={}
+
 def get_document(entity_id,pw_context):
+    # transparent cache
     entity_id=entity_id.lower()
+    if entity_id in scp_cache: return scp_cache[entity_id]
     page=pw_context.new_page()
     page.goto(f'https://scp-wiki.wikidot.com/{entity_id}')
     content_block=page.locator('//div[@id="page-content"]')
@@ -26,6 +31,7 @@ def get_document(entity_id,pw_context):
         return '\n\n'.join(text_blocks)
     text_out=flatten_page(content_block)
     page.close()
+    scp_cache[entity_id]=text_out
     return text_out
 
 
@@ -41,7 +47,7 @@ class SCPDatabaseFilesystem(Operations):
     def getattr(self, path, fh=None):
         if path=='/':
             return {
-                'st_mode': S_IFDIR | 0o755,  # It's a directory, rwxr-xr-x permissions
+                'st_mode': S_IFDIR | 0o555,  # It's a directory, rwxr-xr-x permissions
                 'st_nlink': 12,
                 'st_size': 4096,
                 'st_ctime': 0,
@@ -52,7 +58,7 @@ class SCPDatabaseFilesystem(Operations):
             if filename[0] not in [str(n) for n in range(0,10)]:
                 raise FuseOSError(errno.ENOENT)
             return {
-                'st_mode': S_IFDIR | 0o755,  # It's a directory, rwxr-xr-x permissions
+                'st_mode': S_IFDIR | 0o555,  # It's a directory, rwxr-xr-x permissions
                 'st_nlink': 2,
                 'st_size': 4096,
                 'st_ctime': 0,
@@ -81,11 +87,21 @@ class SCPDatabaseFilesystem(Operations):
             series=int(os.path.basename(path)[0])
             for entity in all_entities_in_series(series):
                 yield entity+'.scp' # add extension
+    def open(self, path, flags):
+        from secrets import randbits
+        file_name=os.path.basename(path)
+        reader_id=0
+        while reader_id == 0 or reader_id in oft:
+          reader_id=randbits(64)
+        oft[reader_id]=file_name
+        print(reader_id)
+        return reader_id
 
-    def read(self, path, size, offset, fh):
-        filename=os.path.basename(path)
-        return get_document(filename[:-4],self._pw_context)[offset:offset+size].encode('utf-8')
+    def read(self, _, size, offset, fh):
+        return get_document(oft[fh][:-4],self._pw_context)[offset:offset+size].encode('utf-8')
 
+    def release(self, _, fh):
+        del oft[fh]
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <mountpoint>")
