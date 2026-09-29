@@ -97,7 +97,6 @@ class SCPDatabaseFilesystem(Operations):
         while reader_id == 0 or reader_id in oft:
           reader_id=randbits(64)
         oft[reader_id]=file_name
-        print(reader_id)
         return reader_id
 
     def read(self, _, size, offset, fh):
