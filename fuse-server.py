@@ -8,14 +8,16 @@ from fuse import FUSE, FuseOSError, Operations
 import requests
 from lxml import html
 from playwright.sync_api import sync_playwright
+import redis
 
-scp_cache={}
 oft={}
 
-def get_document(entity_id,pw_context):
+def get_document(entity_id,pw_context,redis_conn):
     # transparent cache
     entity_id=entity_id.lower()
-    if entity_id in scp_cache: return scp_cache[entity_id]
+    cached_content=redis_conn.get(entity_id)
+    ttl=redis_conn.ttl(entity_id)
+    if cached_content is None and ttl>=600: return cached_content
     page=pw_context.new_page()
     page.goto(f'https://scp-wiki.wikidot.com/{entity_id}')
     content_block=page.locator('//div[@id="page-content"]')
@@ -31,7 +33,7 @@ def get_document(entity_id,pw_context):
         return '\n\n'.join(text_blocks)
     text_out=flatten_page(content_block)
     page.close()
-    scp_cache[entity_id]=text_out
+    redis_conn.set(entity_id,text_out,ex=3600)
     return text_out
 
 
@@ -41,8 +43,9 @@ def all_entities_in_series(series):
     return d.xpath('//div[@id="page-content"]/div[contains(@class,"content-panel")]/ul/li/a/text()')
 
 class SCPDatabaseFilesystem(Operations):
-    def __init__(self,pw_context):
+    def __init__(self,pw_context,redis_conn):
         self._pw_context=pw_context
+        self._redis_conn=redis_conn
 
     def getattr(self, path, fh=None):
         if path=='/':
@@ -69,7 +72,7 @@ class SCPDatabaseFilesystem(Operations):
             return {
                 'st_mode': S_IFREG | 0o444,  # It's a file, rwxr-xr-x permissions
                 'st_nlink': 1,
-                'st_size': len(get_document('SCP-'+entity_id,self._pw_context)),
+                'st_size': len(get_document('SCP-'+entity_id,self._pw_context,self._redis_conn)),
                 'st_ctime': 0,
                 'st_mtime': 0,
                 'st_atime': 0
@@ -98,7 +101,7 @@ class SCPDatabaseFilesystem(Operations):
         return reader_id
 
     def read(self, _, size, offset, fh):
-        return get_document(oft[fh][:-4],self._pw_context)[offset:offset+size].encode('utf-8')
+        return get_document(oft[fh][:-4],self._pw_context,self._redis_conn)[offset:offset+size].encode('utf-8')
 
     def release(self, _, fh):
         del oft[fh]
@@ -108,6 +111,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     mountpoint = sys.argv[1]
+    redis_addr=os.environ['REDIS_URI']
+    redis_conn=redis.Redis.from_url(redis_addr)
     with sync_playwright() as p:
-        FUSE(SCPDatabaseFilesystem(context), mountpoint, nothreads=True, foreground=True, allow_other=True)
         context = p.firefox.launch_persistent_context(headless=True,user_data_dir="cache")
+        FUSE(SCPDatabaseFilesystem(context, redis_conn), mountpoint, nothreads=True, foreground=True, allow_other=True)
