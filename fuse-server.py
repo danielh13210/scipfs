@@ -109,5 +109,5 @@ if __name__ == '__main__':
 
     mountpoint = sys.argv[1]
     with sync_playwright() as p:
-        context = p.firefox.launch_persistent_context(headless=False,user_data_dir="cache")
         FUSE(SCPDatabaseFilesystem(context), mountpoint, nothreads=True, foreground=True, allow_other=True)
+        context = p.firefox.launch_persistent_context(headless=True,user_data_dir="cache")
