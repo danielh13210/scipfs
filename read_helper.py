@@ -7,6 +7,8 @@ import time
 jsfile=open('flatten.js','r')
 parser_code=jsfile.read()
 jsfile.close()
+pw_pause=os.environ.get("PW_PAUSE")=="1"
+pw_display=os.environ.get("PW_DISPLAY")=="1"
 
 def get_document(entity_id,pw_context,redis_conn):
     # transparent cache
@@ -17,7 +19,8 @@ def get_document(entity_id,pw_context,redis_conn):
     def flatten_page(content_block):
         return content_block.evaluate(parser_code)
     text_out=flatten_page(content_block)
-    #while 1:time.sleep(9999)
+    if pw_pause:
+        while 1:time.sleep(9999)
     page.close()
     redis_conn.set(entity_id,text_out,ex=3600)
     print(text_out)
@@ -25,6 +28,6 @@ def get_document(entity_id,pw_context,redis_conn):
 redis_addr=os.environ['REDIS_URI']
 redis_conn=redis.Redis.from_url(redis_addr)
 with sync_playwright() as p:
-    context = p.firefox.launch_persistent_context(headless=False,user_data_dir="cache")
+    context = p.firefox.launch_persistent_context(headless=not pw_display,user_data_dir="cache")
     time.sleep(0.6)
     get_document(sys.argv[1],context,redis_conn)
