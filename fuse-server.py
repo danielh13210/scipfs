@@ -17,7 +17,7 @@ def get_document(entity_id,pw_context,redis_conn):
     entity_id=entity_id.lower()
     cached_content=redis_conn.get(entity_id)
     ttl=redis_conn.ttl(entity_id)
-    if cached_content is None and ttl>=600: return cached_content
+    if cached_content is not None and ttl>=600: return cached_content.decode()
     page=pw_context.new_page()
     page.goto(f'https://scp-wiki.wikidot.com/{entity_id}')
     content_block=page.locator('//div[@id="page-content"]')
