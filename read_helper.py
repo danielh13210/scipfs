@@ -4,6 +4,10 @@ from playwright.sync_api import sync_playwright
 import redis
 import time
 
+jsfile=open('flatten.js','r')
+parser_code=jsfile.read()
+jsfile.close()
+
 def get_document(entity_id,pw_context,redis_conn):
     # transparent cache
     entity_id=entity_id.lower()
@@ -11,16 +15,9 @@ def get_document(entity_id,pw_context,redis_conn):
     page.goto(f'https://scp-wiki.wikidot.com/{entity_id}')
     content_block=page.locator('//div[@id="page-content"]')
     def flatten_page(content_block):
-        objects=content_block.locator("*")
-        text_blocks=[]
-        for object in objects.all():
-            if object.evaluate("el => el.tagName").lower()=="blockquote":
-                content="```\n"+flatten_page(object)+"\n```"
-            else: # it must be a p
-                content=''.join(object.all_inner_texts())
-            text_blocks.append(content)
-        return '\n\n'.join(text_blocks)
+        return content_block.evaluate(parser_code)
     text_out=flatten_page(content_block)
+    #while 1:time.sleep(9999)
     page.close()
     redis_conn.set(entity_id,text_out,ex=3600)
     print(text_out)
@@ -28,6 +25,6 @@ def get_document(entity_id,pw_context,redis_conn):
 redis_addr=os.environ['REDIS_URI']
 redis_conn=redis.Redis.from_url(redis_addr)
 with sync_playwright() as p:
-    context = p.firefox.launch_persistent_context(headless=True,user_data_dir="cache")
+    context = p.firefox.launch_persistent_context(headless=False,user_data_dir="cache")
     time.sleep(0.6)
     get_document(sys.argv[1],context,redis_conn)
