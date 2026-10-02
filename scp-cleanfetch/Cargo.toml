@@ -1,0 +1,18 @@
+[package]
+name="scp-cleanfetch"
+version="0.0.1"
+edition="2021"
+
+[dependencies]
+# Async runtime to handle the HTTP requests
+tokio = { version = "1.0", features = ["full"] } 
+
+# HTTP Client (with JSON parsing feature enabled)
+reqwest = { version = "0.11", features = ["json"] } 
+
+# Serializing/Deserializing the GraphQL JSON response
+serde = { version = "1.0", features = ["derive"] } 
+serde_json = "1.0"
+
+# The official SCP Wiki markup parser
+ftml = "1.41.0" 

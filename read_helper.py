@@ -1,27 +1,20 @@
 import sys
 import os
-from playwright.sync_api import sync_playwright
+import subprocess
 import redis
 import time
 
-jsfile=open('flatten.js','r')
-parser_code=jsfile.read()
-jsfile.close()
-pw_pause=os.environ.get("PW_PAUSE")=="1"
-pw_display=os.environ.get("PW_DISPLAY")=="1"
+this_dir=os.path.dirname(__file__)
 
-def get_document(entity_id,pw_context,redis_conn):
+def get_document(entity_id,redis_conn):
     # transparent cache
     entity_id=entity_id.lower()
-    page=pw_context.pages[0]
-    page.goto(f'https://scp-wiki.wikidot.com/{entity_id}')
-    content_block=page.locator('//div[@id="page-content"]')
-    def flatten_page(content_block):
-        return content_block.evaluate(parser_code)
+    data=subprocess.check_output([os.path.join(this_dir,"scp-cleanfetch","target","debug","scp-cleanfetch"),entity_id],text=True)
+    lines=data.splitlines()
+    html='\n'.join(lines[:-1])
+    creation_date=lines[-1][12:]
+    print(creation_date)
     text_out=flatten_page(content_block)
-    if pw_pause:
-        while 1:time.sleep(9999)
-    page.close()
     redis_conn.set(entity_id,text_out,ex=3600)
     if redis_conn.get(entity_id+'.renewing') is not None:
         redis_conn.delete(entity_id+'.renewing')
@@ -29,9 +22,4 @@ def get_document(entity_id,pw_context,redis_conn):
 
 redis_addr=os.environ['REDIS_URI']
 redis_conn=redis.Redis.from_url(redis_addr)
-with sync_playwright() as p:
-    browser = p.firefox.launch(headless=not pw_display)
-    context=browser.new_context()
-    context.new_page()
-    time.sleep(0.6)
-    get_document(sys.argv[1],context,redis_conn)
+get_document(sys.argv[1],redis_conn)
