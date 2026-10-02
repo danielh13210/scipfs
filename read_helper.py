@@ -2,7 +2,7 @@ import sys
 import os
 import subprocess
 import redis
-import time
+from datetime import datetime,timezone
 
 this_dir=os.path.dirname(__file__)
 
@@ -13,9 +13,11 @@ def get_document(entity_id,redis_conn):
     lines=data.splitlines()
     html='\n'.join(lines[:-1])
     creation_date=lines[-1][12:]
-    print(creation_date)
+    creation_date=datetime.fromisoformat(creation_date)
+    now=datetime.now(timezone.utc)
+    is_new=(now-creation_date).total_seconds()<86400
     text_out=flatten_page(content_block)
-    redis_conn.set(entity_id,text_out,ex=3600)
+    redis_conn.set(entity_id,text_out,ex=3600 if is_new else 1200)
     if redis_conn.get(entity_id+'.renewing') is not None:
         redis_conn.delete(entity_id+'.renewing')
     print(text_out)
