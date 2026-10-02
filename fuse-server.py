@@ -59,7 +59,7 @@ class SCPDatabaseFilesystem(Operations):
             return {
                 'st_mode': S_IFREG | 0o444,  # It's a file, rwxr-xr-x permissions
                 'st_nlink': 1,
-                'st_size': len(get_document('SCP-'+entity_id,self._redis_conn)),
+                'st_size': len(get_document('SCP-'+entity_id,self._redis_conn).encode('utf-8')),
                 'st_ctime': 0,
                 'st_mtime': 0,
                 'st_atime': 0
@@ -87,7 +87,7 @@ class SCPDatabaseFilesystem(Operations):
         return reader_id
 
     def read(self, _, size, offset, fh):
-        return get_document(oft[fh][:-4],self._redis_conn)[offset:offset+size]
+        return get_document(oft[fh][:-4],self._redis_conn)[offset:offset+size].encode('utf-8')
 
     def release(self, _, fh):
         del oft[fh]
