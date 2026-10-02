@@ -28,6 +28,8 @@ def get_document(entity_id,pw_context,redis_conn):
 redis_addr=os.environ['REDIS_URI']
 redis_conn=redis.Redis.from_url(redis_addr)
 with sync_playwright() as p:
-    context = p.firefox.launch_persistent_context(headless=not pw_display,user_data_dir="cache")
+    browser = p.firefox.launch(headless=not pw_display)
+    context=browser.new_context()
+    context.new_page()
     time.sleep(0.6)
     get_document(sys.argv[1],context,redis_conn)
