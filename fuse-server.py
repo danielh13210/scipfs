@@ -17,7 +17,8 @@ def get_document(entity_id,redis_conn):
     cached_content=redis_conn.get(entity_id)
     if cached_content:
         ttl=redis_conn.ttl(entity_id)
-        if ttl<=600:
+        could_lock=redis_conn.set(entity_id+'.renewing','',nx=True,ex=30)
+        if ttl<=600 and could_lock:
             subprocess.Popen(["python3","read_helper.py",entity_id],stdout=subprocess.DEVNULL)
         return cached_content.decode()
     else:

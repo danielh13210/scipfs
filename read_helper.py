@@ -23,6 +23,8 @@ def get_document(entity_id,pw_context,redis_conn):
         while 1:time.sleep(9999)
     page.close()
     redis_conn.set(entity_id,text_out,ex=3600)
+    if redis_conn.get(entity_id+'.renewing') is not None:
+        redis_conn.delete(entity_id+'.renewing')
     print(text_out)
 
 redis_addr=os.environ['REDIS_URI']
