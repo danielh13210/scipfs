@@ -1,13 +1,17 @@
+import fs from 'node:fs';
+import { JSDOM } from 'jsdom';
+import { text } from 'stream/consumers';
+
 function parseDocument(element) {
     function process_container(container,level){
-        elements=Array.from(container.childNodes)
+        let elements=Array.from(container.childNodes)
             .map((child)=>flatten_node(child,level+1))
             .filter((text)=>text.length>0);
         return elements.join("\n\n");
     }
 
     function flatten_node(element,level){
-        if(element.nodeType==1 && element.tagName.toLowerCase()=="div"){
+        if(element.nodeType==1 && element.tagName.toLowerCase()=="body"){
             if(level==1 && 
                 (element.querySelector(":scope > div.page-rate-widget-box") || 
                  element.classList.contains("footer-wikiwalk-nav") || 
@@ -21,7 +25,7 @@ function parseDocument(element) {
         } else if (element.nodeType==1 && element.tagName.toLowerCase()=="em") {
             return "*"+process_container(element)+"*";
         } else if (element.nodeType==1 && element.tagName.toLowerCase()=="p") {
-            elements=Array.from(element.childNodes)
+            let elements=Array.from(element.childNodes)
                 .map((child)=>flatten_node(child,level+1))
                 .filter((text)=>text.length>0);
             return elements.join("");
@@ -35,3 +39,12 @@ function parseDocument(element) {
     }
     return flatten_node(element,0).trim();
 }
+
+async function main(){
+    const html_data = await text(process.stdin);
+    const dom = new JSDOM(html_data);
+    const { window } = dom;
+    const { document } = window;
+    console.log(parseDocument(document.body));
+}
+main();

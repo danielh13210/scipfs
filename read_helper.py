@@ -16,7 +16,14 @@ def get_document(entity_id,redis_conn):
     creation_date=datetime.fromisoformat(creation_date)
     now=datetime.now(timezone.utc)
     is_new=(now-creation_date).total_seconds()<86400
-    text_out=flatten_page(content_block)
+    def flatten_page(content):
+      proc=subprocess.Popen(["node",os.path.join(this_dir,"flatten.js")],stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True)
+      proc.stdin.write(content)
+      proc.stdin.flush()
+      proc.stdin.close()
+      proc.wait()
+      return proc.stdout.read().strip()
+    text_out=flatten_page(html)
     redis_conn.set(entity_id,text_out,ex=3600 if is_new else 1200)
     if redis_conn.get(entity_id+'.renewing') is not None:
         redis_conn.delete(entity_id+'.renewing')

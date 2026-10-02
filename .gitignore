@@ -1,4 +1,5 @@
 venv/
 __pycache__/
 scp-cleanfetch/target/
+node_modules/
 db/
