@@ -12,10 +12,9 @@ function parseDocument(element) {
 
     function flatten_node(element,level){
         if(element.nodeType==1 && element.tagName.toLowerCase()=="body"){
-            if(level==1 && 
-                (element.querySelector(":scope > div.page-rate-widget-box") || 
-                 element.classList.contains("footer-wikiwalk-nav") || 
-                 element.classList.contains("licensebox"))){
+            return process_container(element,level);
+        } else if (element.nodeType==1 && element.tagName.toLowerCase()=="div"){
+            if (level==1 && element.classList.contains("footer-wikiwalk-nav")){
                 return "";
             } else {
                 return process_container(element,level);
@@ -25,6 +24,7 @@ function parseDocument(element) {
         } else if (element.nodeType==1 && element.tagName.toLowerCase()=="em") {
             return "*"+process_container(element)+"*";
         } else if (element.nodeType==1 && element.tagName.toLowerCase()=="p") {
+            if(element.textContent.startsWith("[["))return "";
             let elements=Array.from(element.childNodes)
                 .map((child)=>flatten_node(child,level+1))
                 .filter((text)=>text.length>0);
