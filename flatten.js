@@ -29,8 +29,11 @@ function parseDocument(element) {
                 .map((child)=>flatten_node(child,level+1))
                 .filter((text)=>text.length>0);
             return elements.join("");
+        } else if (element.nodeType==1 && element.tagName.toLowerCase()=="br"){
+            if(element.parentElement.tagName.toLowerCase()=="p") return "\n\n";
+            else return "\u200c";
         } else if (element.nodeType==1 && element.tagName.toLowerCase()=="blockquote") {
-            return "```\n"+process_container(element).trim()+"\n```";
+            return "```\n"+process_container(element,level).trim()+"\n```";
         } else if (element.nodeType==3){
             return element.textContent;
         } else {
