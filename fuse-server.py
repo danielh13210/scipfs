@@ -22,8 +22,11 @@ def get_document(entity_id,redis_conn):
             subprocess.Popen(["python3","read_helper.py",entity_id],stdout=subprocess.DEVNULL)
         return cached_content.decode()
     else:
-        out=subprocess.check_output(["python3","read_helper.py",entity_id],text=True)
-        return out
+        could_lock=redis_conn.set(entity_id+'.renewing','',nx=True,ex=30)
+        if not could_lock:
+            out=subprocess.check_output(["python3","read_helper.py",entity_id],text=True)
+            return out
+        raise FuseOSError(errno.EAGAIN)
 
 def all_entities_in_series(series):
     resp=requests.get(f'https://scp-wiki.wikidot.com/scp-series-{series+1}') # indexing on wikidot starts from 1
