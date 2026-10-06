@@ -17,13 +17,14 @@ def get_document(entity_id,redis_conn):
     cached_content=redis_conn.get(entity_id)
     if cached_content:
         ttl=redis_conn.ttl(entity_id)
-        could_lock=redis_conn.set(entity_id+'.renewing','',nx=True,ex=30)
-        if ttl<=600 and could_lock:
-            subprocess.Popen(["python3","read_helper.py",entity_id],stdout=subprocess.DEVNULL)
+        if ttl<=600:
+            could_lock=redis_conn.set(entity_id+'.renewing','',nx=True,ex=30)
+            if could_lock:
+                subprocess.Popen(["python3","read_helper.py",entity_id],stdout=subprocess.DEVNULL)
         return cached_content.decode()
     else:
         could_lock=redis_conn.set(entity_id+'.renewing','',nx=True,ex=30)
-        if not could_lock:
+        if could_lock:
             out=subprocess.check_output(["python3","read_helper.py",entity_id],text=True)
             return out
         raise FuseOSError(errno.EAGAIN)
