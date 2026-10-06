@@ -24,7 +24,7 @@ def get_document(entity_id,redis_conn):
       proc.wait()
       return proc.stdout.read().strip()
     text_out=flatten_page(html)
-    redis_conn.set(entity_id,text_out,ex=3600 if is_new else 1200)
+    redis_conn.set(entity_id,text_out,ex=1200 if is_new else 3600)
     if redis_conn.get(entity_id+'.renewing') is not None:
         redis_conn.delete(entity_id+'.renewing')
     print(text_out)
