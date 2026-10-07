@@ -6,6 +6,7 @@ from stat import S_IFDIR, S_IFREG
 from time import time
 from fuse import FUSE, FuseOSError, Operations
 import requests
+import time
 from lxml import html
 import redis
 import subprocess
@@ -27,7 +28,11 @@ def get_document(entity_id,redis_conn):
         if could_lock:
             out=subprocess.check_output(["python3","read_helper.py",entity_id],text=True)
             return out
-        raise FuseOSError(errno.EAGAIN)
+        else:
+            while redis_conn.get(entity_id+'.renewing') is not None:
+                time.sleep(0.2)
+            cached_content=redis_conn.get(entity_id)
+            return cached_content.decode()
 
 def all_entities_in_series(series):
     resp=requests.get(f'https://scp-wiki.wikidot.com/scp-series-{series+1}') # indexing on wikidot starts from 1
