@@ -5,9 +5,7 @@ import errno
 from stat import S_IFDIR, S_IFREG
 from time import time
 from fuse import FUSE, FuseOSError, Operations
-import requests
 import time
-from lxml import html
 import redis
 import subprocess
 
@@ -35,9 +33,26 @@ def get_document(entity_id,redis_conn):
             return cached_content.decode()
 
 def all_entities_in_series(series):
-    resp=requests.get(f'https://scp-wiki.wikidot.com/scp-series-{series+1}') # indexing on wikidot starts from 1
-    d=html.document_fromstring(resp.text)
-    return d.xpath('//div[@id="page-content"]/div[contains(@class,"content-panel")]/ul/li/a/text()')
+    series=str(series)
+    series=series.lower()
+    cached_content=redis_conn.get(f'series-{series}')
+    if cached_content:
+        ttl=redis_conn.ttl(f'series-{series}')
+        if ttl<=600:
+            could_lock=redis_conn.set(f'series-{series}.renewing','',nx=True,ex=30)
+            if could_lock:
+                subprocess.Popen(["python3","series_read_helper.py",series],stdout=subprocess.DEVNULL)
+        return cached_content.decode('utf-8').split('\0')
+    else:
+        could_lock=redis_conn.set(f'series-{series}.renewing','',nx=True,ex=30)
+        if could_lock:
+            out=subprocess.check_output(["python3","series_read_helper.py",series],text=True)
+            return out.split('\0')
+        else:
+            while redis_conn.get(f'series-{series}.renewing') is not None:
+                time.sleep(0.2)
+            cached_content=redis_conn.get(f'series-{series}.renewing')
+            return cached_content.decode()
 
 class SCPDatabaseFilesystem(Operations):
     def __init__(self,redis_conn):
@@ -64,7 +79,7 @@ class SCPDatabaseFilesystem(Operations):
                 'st_mtime': 0,
                 'st_atime': 0
             }
-        elif ((len(entity_id:=(filename:=os.path.basename(path))[4:-4])==4 and entity_id[0]==os.path.basename(os.path.dirname(path))[0]) or (len(entity_id)==3 and os.path.basename(os.path.dirname(path))[0]=='0')) and filename[:4]=="SCP-" and filename[-4:]==".scp":
+        elif os.path.basename(path)[:-4] in all_entities_in_series(os.path.basename(os.path.dirname(path))[0]):
             return {
                 'st_mode': S_IFREG | 0o444,  # It's a file, rwxr-xr-x permissions
                 'st_nlink': 1,
