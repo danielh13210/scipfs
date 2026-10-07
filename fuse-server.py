@@ -108,4 +108,4 @@ if __name__ == '__main__':
     mountpoint = sys.argv[1]
     redis_addr=os.environ['REDIS_URI']
     redis_conn=redis.Redis.from_url(redis_addr)
-    FUSE(SCPDatabaseFilesystem(redis_conn), mountpoint, nothreads=True, foreground=True, allow_other=True, direct_io=True)
+    FUSE(SCPDatabaseFilesystem(redis_conn), mountpoint, nothreads=False, foreground=True, allow_other=True, direct_io=True)
