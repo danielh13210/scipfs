@@ -68,17 +68,20 @@ class SCPDatabaseFilesystem(Operations):
                 'st_mtime': 0,
                 'st_atime': 0
             }
-        elif os.path.dirname(path)=='/' and (filename:=os.path.basename(path))[1:]=="XXX":
-            if filename[0] not in [str(n) for n in range(0,10)]:
+        elif os.path.dirname(path)=='/':
+            if (filename:=os.path.basename(path))[1:]=="XXX":
+                if filename[0] not in [str(n) for n in range(0,10)]:
+                    raise FuseOSError(errno.ENOENT)
+                return {
+                    'st_mode': S_IFDIR | 0o555,  # It's a directory, rwxr-xr-x permissions
+                    'st_nlink': 2,
+                    'st_size': 4096,
+                    'st_ctime': 0,
+                    'st_mtime': 0,
+                    'st_atime': 0
+                }
+            else:
                 raise FuseOSError(errno.ENOENT)
-            return {
-                'st_mode': S_IFDIR | 0o555,  # It's a directory, rwxr-xr-x permissions
-                'st_nlink': 2,
-                'st_size': 4096,
-                'st_ctime': 0,
-                'st_mtime': 0,
-                'st_atime': 0
-            }
         elif os.path.basename(path)[:-4] in all_entities_in_series(os.path.basename(os.path.dirname(path))[0]):
             return {
                 'st_mode': S_IFREG | 0o444,  # It's a file, rwxr-xr-x permissions
