@@ -20,9 +20,9 @@ function parseDocument(element) {
                 return process_container(element,level);
             }
         } else if (element.nodeType==1 && element.tagName.toLowerCase()=="strong") {
-            return "**"+process_container(element)+"**";
+            return "\x1b[1m"+process_container(element)+"\x1b[0m";
         } else if (element.nodeType==1 && element.tagName.toLowerCase()=="em") {
-            return "*"+process_container(element)+"*";
+            return "\x1b[3m"+process_container(element)+"\x1b[0m";
         } else if (element.nodeType==1 && element.tagName.toLowerCase()=="p") {
             if(element.textContent.startsWith("[["))return "";
             let elements=Array.from(element.childNodes)
