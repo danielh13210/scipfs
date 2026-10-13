@@ -11,6 +11,11 @@ import subprocess
 
 oft={}
 
+def expand_series(series):
+    ch1=series[0]
+    series_vpath='lost-scp-series' if ch1=='l' else f'scp-series-{int(ch1)+1}'
+    return series_vpath
+
 def get_document(entity_id,redis_conn):
     entity_id=entity_id.lower()
     cached_content=redis_conn.get(entity_id)
@@ -70,7 +75,7 @@ class SCPDatabaseFilesystem(Operations):
             }
         elif os.path.dirname(path)=='/':
             if (filename:=os.path.basename(path))[1:]=="XXX":
-                if filename[0] not in [str(n) for n in range(0,10)]:
+                if filename[0] not in [str(n) for n in range(0,10)] and filename[0]!='L':
                     raise FuseOSError(errno.ENOENT)
                 return {
                     'st_mode': S_IFDIR | 0o555,  # It's a directory, rwxr-xr-x permissions
@@ -82,7 +87,7 @@ class SCPDatabaseFilesystem(Operations):
                 }
             else:
                 raise FuseOSError(errno.ENOENT)
-        elif os.path.basename(path)[:-4] in all_entities_in_series(os.path.basename(os.path.dirname(path))[0]):
+        elif os.path.basename(path)[:-4] in all_entities_in_series(expand_series(os.path.basename(os.path.dirname(path)))):
             return {
                 'st_mode': S_IFREG | 0o444,  # It's a file, rwxr-xr-x permissions
                 'st_nlink': 1,
@@ -100,9 +105,10 @@ class SCPDatabaseFilesystem(Operations):
         if path == "/":
             for i in range(0, 10):
                 yield f"{i}XXX"
+            yield "LXXX"
         else:
-            series=int(os.path.basename(path)[0])
-            for entity in all_entities_in_series(series):
+            series_vpath=expand_series(os.path.basename(path))
+            for entity in all_entities_in_series(series_vpath):
                 yield entity+'.scp' # add extension
     def open(self, path, flags):
         from secrets import randbits
