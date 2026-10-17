@@ -47,17 +47,19 @@ def all_entities_in_series(series):
             could_lock=redis_conn.set(f'series-{series}.renewing','',nx=True,ex=30)
             if could_lock:
                 subprocess.Popen(["python3","series_read_helper.py",series],stdout=subprocess.DEVNULL)
-        return cached_content.decode('utf-8').split('\0')
+        out=cached_content.decode('utf-8')
+        return dict([ a.split('\x01') for a in out.split('\0')])
     else:
         could_lock=redis_conn.set(f'series-{series}.renewing','',nx=True,ex=30)
         if could_lock:
             out=subprocess.check_output(["python3","series_read_helper.py",series],text=True)
-            return out.split('\0')
+            return dict([ a.split('\x01') for a in out.split('\0')])
         else:
             while redis_conn.get(f'series-{series}.renewing') is not None:
                 time.sleep(0.2)
             cached_content=redis_conn.get(f'series-{series}')
-            return cached_content.decode()
+            out=cached_content.decode()
+            return dict([ a.split('\x01') for a in out.split('\0')])
 
 class SCPDatabaseFilesystem(Operations):
     def __init__(self,redis_conn):
@@ -119,8 +121,10 @@ class SCPDatabaseFilesystem(Operations):
         oft[reader_id]=file_name
         return reader_id
 
-    def read(self, _, size, offset, fh):
-        return get_document(oft[fh][:-4],self._redis_conn)[offset:offset+size].encode('utf-8')
+    def read(self, path, size, offset, fh):
+        series_vpath=expand_series(os.path.basename(os.path.dirname(path)))
+        vpath=all_entities_in_series(series_vpath)[oft[fh][:-4]]
+        return get_document(vpath,self._redis_conn)[offset:offset+size].encode('utf-8')
 
     def release(self, _, fh):
         del oft[fh]
