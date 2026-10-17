@@ -56,7 +56,7 @@ def all_entities_in_series(series):
         else:
             while redis_conn.get(f'series-{series}.renewing') is not None:
                 time.sleep(0.2)
-            cached_content=redis_conn.get(f'series-{series}.renewing')
+            cached_content=redis_conn.get(f'series-{series}')
             return cached_content.decode()
 
 class SCPDatabaseFilesystem(Operations):
