@@ -11,6 +11,11 @@ import subprocess
 
 oft={}
 
+def expand_series(series):
+    ch1=series[0]
+    series_vpath='lost-scp-series' if ch1=='l' else f'scp-series-{int(ch1)+1}'
+    return series_vpath
+
 def get_document(entity_id,redis_conn):
     entity_id=entity_id.lower()
     cached_content=redis_conn.get(entity_id)
@@ -42,17 +47,19 @@ def all_entities_in_series(series):
             could_lock=redis_conn.set(f'series-{series}.renewing','',nx=True,ex=30)
             if could_lock:
                 subprocess.Popen(["python3","series_read_helper.py",series],stdout=subprocess.DEVNULL)
-        return cached_content.decode('utf-8').split('\0')
+        out=cached_content.decode('utf-8')
+        return dict([ a.split('\x01') for a in out.split('\0')])
     else:
         could_lock=redis_conn.set(f'series-{series}.renewing','',nx=True,ex=30)
         if could_lock:
             out=subprocess.check_output(["python3","series_read_helper.py",series],text=True)
-            return out.split('\0')
+            return dict([ a.split('\x01') for a in out.split('\0')])
         else:
             while redis_conn.get(f'series-{series}.renewing') is not None:
                 time.sleep(0.2)
-            cached_content=redis_conn.get(f'series-{series}.renewing')
-            return cached_content.decode()
+            cached_content=redis_conn.get(f'series-{series}')
+            out=cached_content.decode()
+            return dict([ a.split('\x01') for a in out.split('\0')])
 
 class SCPDatabaseFilesystem(Operations):
     def __init__(self,redis_conn):
@@ -70,7 +77,7 @@ class SCPDatabaseFilesystem(Operations):
             }
         elif os.path.dirname(path)=='/':
             if (filename:=os.path.basename(path))[1:]=="XXX":
-                if filename[0] not in [str(n) for n in range(0,10)]:
+                if filename[0] not in [str(n) for n in range(0,10)] and filename[0]!='L':
                     raise FuseOSError(errno.ENOENT)
                 return {
                     'st_mode': S_IFDIR | 0o555,  # It's a directory, rwxr-xr-x permissions
@@ -82,7 +89,7 @@ class SCPDatabaseFilesystem(Operations):
                 }
             else:
                 raise FuseOSError(errno.ENOENT)
-        elif os.path.basename(path)[:-4] in all_entities_in_series(os.path.basename(os.path.dirname(path))[0]):
+        elif os.path.basename(path)[:-4] in all_entities_in_series(expand_series(os.path.basename(os.path.dirname(path)))):
             return {
                 'st_mode': S_IFREG | 0o444,  # It's a file, rwxr-xr-x permissions
                 'st_nlink': 1,
@@ -100,9 +107,10 @@ class SCPDatabaseFilesystem(Operations):
         if path == "/":
             for i in range(0, 10):
                 yield f"{i}XXX"
+            yield "LXXX"
         else:
-            series=int(os.path.basename(path)[0])
-            for entity in all_entities_in_series(series):
+            series_vpath=expand_series(os.path.basename(path))
+            for entity in all_entities_in_series(series_vpath):
                 yield entity+'.scp' # add extension
     def open(self, path, flags):
         from secrets import randbits
@@ -113,8 +121,10 @@ class SCPDatabaseFilesystem(Operations):
         oft[reader_id]=file_name
         return reader_id
 
-    def read(self, _, size, offset, fh):
-        return get_document(oft[fh][:-4],self._redis_conn)[offset:offset+size].encode('utf-8')
+    def read(self, path, size, offset, fh):
+        series_vpath=expand_series(os.path.basename(os.path.dirname(path)))
+        vpath=all_entities_in_series(series_vpath)[oft[fh][:-4]]
+        return get_document(vpath,self._redis_conn)[offset:offset+size].encode('utf-8')
 
     def release(self, _, fh):
         del oft[fh]

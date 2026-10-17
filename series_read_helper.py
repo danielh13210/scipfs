@@ -8,10 +8,11 @@ this_dir=os.path.dirname(__file__)
 
 def get_entities_in_series(series,redis_conn):
     # transparent cache
-    series=int(series.lower())
-    resp=requests.get(f'https://scp-wiki.wikidot.com/scp-series-{series+1}') # indexing on wikidot starts from 1
+    series_vpath=series.lower()
+    resp=requests.get(f'https://scp-wiki.wikidot.com/{series_vpath}')
     d=html.document_fromstring(resp.text)
-    series_list=d.xpath('//div[@id="page-content"]/div[contains(@class,"content-panel")]/ul/li/a/text()')
+    series_list=d.xpath('//div[@id="page-content"]/div[contains(@class,"content-panel")]/ul/li/a')
+    series_list=[ a.xpath("./text()")[0]+'\x01'+a.xpath("./@href")[0].lstrip('/') for a in series_list]
     series_list_ser='\0'.join(series_list)
     redis_conn.set(f'series-{series}',series_list_ser.encode('utf-8'),ex=3600)
     if redis_conn.get(f'series-{series}.renewing') is not None:
