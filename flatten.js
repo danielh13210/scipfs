@@ -11,9 +11,15 @@ function parseDocument(element) {
     }
 
     function flatten_node(element,level){
-        if(element.nodeType==1 && element.tagName.toLowerCase()=="body"){
+        if(element.tagName){
+            var tagName=element.tagName.toLowerCase();
+        } else {
+            var tagName=null;
+        }
+
+        if(element.nodeType==1 && tagName=="body"){
             return process_container(element,level);
-        } else if (element.nodeType==1 && element.tagName.toLowerCase()=="div"){
+        } else if (element.nodeType==1 && tagName=="div"){
             if (level==1 && element.classList.contains("footer-wikiwalk-nav")){
                 return "";
             } else {
@@ -29,10 +35,10 @@ function parseDocument(element) {
                 .map((child)=>flatten_node(child,level+1))
                 .filter((text)=>text.length>0);
             return elements.join("");
-        } else if (element.nodeType==1 && element.tagName.toLowerCase()=="br"){
-            if(element.parentElement.tagName.toLowerCase()=="p") return "\n\n";
+        } else if (element.nodeType==1 && tagName=="br"){
+            if(element.parenttagName=="p") return "\n\n";
             else return "\u200c";
-        } else if (element.nodeType==1 && element.tagName.toLowerCase()=="blockquote") {
+        } else if (element.nodeType==1 && tagName=="blockquote") {
             return "```\n"+process_container(element,level).trim()+"\n```";
         } else if (element.nodeType==3){
             return element.textContent;
