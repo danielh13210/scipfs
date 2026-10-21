@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { text } from 'stream/consumers';
 
