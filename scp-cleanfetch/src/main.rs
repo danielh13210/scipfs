@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use ftml::render::Render;
+use std::io;
 
 
 // 1. Mirror the GraphQL JSON response structure into Rust Structs
@@ -70,40 +71,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args: Vec<String> = std::env::args().collect();
     let arg1 = &args[1];
-    // Define the query string exactly as before
-    let raw_query = format!(r#"
-        query TheCreationDate {{
-          page(url: "http://scp-wiki.wikidot.com/{}") {{
-            wikidotInfo {{
-              createdAt
-              title
-              source
+    if arg1!="stdin" {
+        // Define the query string exactly as before
+        let raw_query = format!(r#"
+            query TheCreationDate {{
+            page(url: "http://scp-wiki.wikidot.com/{}") {{
+                wikidotInfo {{
+                createdAt
+                title
+                source
+                }}
             }}
-          }}
-        }}
-    "#,arg1).to_string();
+            }}
+        "#,arg1).to_string();
 
-    let payload = GraphQLPayload { query: raw_query };
+        let payload = GraphQLPayload { query: raw_query };
 
-    // 3. Make the async POST request with the Content-Type header and JSON payload
-    // separate objects for debugging purposes
-    let res1 = client
-        .post("https://apiv1.crom.avn.sh/graphql")
-        .header("Content-Type", "application/json")
-        .header("User-Agent", "scp-cleanfetch/0.0.1")
-        .json(&payload)
-        .send()
-        .await?;
-//    println!("{}",(res1).text().await?);
-    let res = res1
-        .json::<GraphQLResponse>() // Deserialize straight into our structs
-        .await?;
+        // 3. Make the async POST request with the Content-Type header and JSON payload
+        // separate objects for debugging purposes
+        let res1 = client
+            .post("https://apiv1.crom.avn.sh/graphql")
+            .header("Content-Type", "application/json")
+            .header("User-Agent", "scp-cleanfetch/0.0.1")
+            .json(&payload)
+            .send()
+            .await?;
+    //    println!("{}",(res1).text().await?);
+        let res = res1
+            .json::<GraphQLResponse>() // Deserialize straight into our structs
+            .await?;
 
-    let info = res.data.page.wikidot_info;
+        let info = res.data.page.wikidot_info;
 
-    // 4. Feed the raw source text natively into ftml
-    println!("{}",wikitext_to_html(&info));
-    println!("..CREATION: {}",info.created_at);
-
+        // 4. Feed the raw source text natively into ftml
+        println!("{}",wikitext_to_html(&info));
+        println!("..CREATION: {}",info.created_at);
+    } else {
+        let input = io::read_to_string(io::stdin())?;
+        let fake_info = WikidotInfo { created_at: "dc".to_string(), title:"dc".to_string(), source:input };
+        println!("{}",wikitext_to_html(&fake_info));
+        println!("..CREATION: 1970-01-01T00:00:00Z"); // there simply needs to be something here
+    }
     Ok(())
 }
