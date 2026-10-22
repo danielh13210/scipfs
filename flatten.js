@@ -49,9 +49,9 @@ function parseDocument(element) {
             } else {
                 return process_container(element,level);
             }
-        } else if (element.nodeType==1 && element.tagName.toLowerCase()=="strong") {
+        } else if (element.nodeType==1 && tagName=="strong") {
             return "**"+process_container(element)+"**";
-        } else if (element.nodeType==1 && element.tagName.toLowerCase()=="em") {
+        } else if (element.nodeType==1 && tagName=="em") {
             return "*"+process_container(element)+"*";
         } else if (element.nodeType==1 && (tagName=="p"||tagName=="span")) {
             let elements=Array.from(element.childNodes);
