@@ -2,8 +2,11 @@ import { JSDOM } from 'jsdom';
 import { text } from 'stream/consumers';
 
 function filter_modules(html){
-    const regex=/\[\[(.*?)\]\]/g;
-    const result = html.replace(regex, (_, module_text) => {
+    const license_matcher=/\[\[include (?::[^\]]*:)component:license-box.*\]\].*?\[\[include (?::[^\]]*:)component:license-box-end\]\]/g;
+    html=html.replaceAll(license_matcher,""); // immersivity requires removing this - copyright still belongs to the authors!
+
+    const block_regex=/\[\[(.*?)\]\]/g;
+    const result = html.replace(block_regex, (_, module_text) => {
         if(module_text.startsWith("include")){
             module_text=module_text.slice(8).replaceAll("<br>","\n");
             let blocks=module_text.split("|").map((s)=>s.trim());
