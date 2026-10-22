@@ -53,13 +53,14 @@ function parseDocument(element) {
             return "**"+process_container(element)+"**";
         } else if (element.nodeType==1 && element.tagName.toLowerCase()=="em") {
             return "*"+process_container(element)+"*";
-        } else if (element.nodeType==1 && element.tagName.toLowerCase()=="p") {
+        } else if (element.nodeType==1 && (tagName=="p"||tagName=="span")) {
             let elements=Array.from(element.childNodes);
             return elements.map((child)=>flatten_node(child,level+1))
                 .filter((text)=>text.length>0)
                 .join("");
         } else if (element.nodeType==1 && tagName=="br"){
-            if(element.parentElement.tagName.toLowerCase()=="p") return "\n\n";
+            let parentTagName=element.parentElement.tagName.toLowerCase();
+            if(parentTagName=="p"||parentTagName=="span") return "\n\n";
             else return "\u200c";
         } else if (element.nodeType==1 && tagName=="blockquote") {
             return "```\n"+process_container(element,level).trim()+"\n```";
@@ -67,6 +68,14 @@ function parseDocument(element) {
             return "<sup>"+process_container(element,level)+"</sup>";
         } else if (element.nodeType==1 && tagName=="sub"){
             return "<sub>"+process_container(element,level)+"</sub>";
+        } else if (element.nodeType==1 && (tagName=="ol"||tagName=="ul")){
+            return process_container(element,level);
+        } else if (element.nodeType==1 && tagName=="li"){
+            if(element.parentElement.tagName.toLowerCase()=="ol"){
+                return element.getAttribute("data-id")+". "+process_container(element,level);
+            } else {
+                return "* "+process_container(element,level);
+            }
         } else if (element.nodeType==3){
             return element.textContent;
         } else {
