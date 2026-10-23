@@ -56,7 +56,7 @@ function parseDocument(element) {
             return "**"+process_container(element,level,"")+"**";
         } else if (element.nodeType==1 && tagName=="em") {
             return "*"+process_container(element,level,"")+"*";
-        } else if (element.nodeType==1 && (tagName=="p"||tagName=="span")) {
+        } else if (element.nodeType==1 && (tagName=="p"||(tagName=="span"&&!element.classList.contains("wj-footnote-ref-tooltip")))) {
             return process_container(element,level,"");
         } else if (element.nodeType==1 && tagName=="br"){
             let parentTagName=element.parentElement.tagName.toLowerCase();
