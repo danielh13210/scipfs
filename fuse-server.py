@@ -124,7 +124,7 @@ class SCPDatabaseFilesystem(Operations):
     def read(self, path, size, offset, fh):
         series_vpath=expand_series(os.path.basename(os.path.dirname(path)))
         vpath=all_entities_in_series(series_vpath)[oft[fh][:-4]]
-        return get_document(vpath,self._redis_conn)[offset:offset+size].encode('utf-8')
+        return get_document(vpath,self._redis_conn).encode('utf-8')[offset:offset+size]
 
     def release(self, _, fh):
         del oft[fh]
