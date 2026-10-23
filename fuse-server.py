@@ -13,7 +13,7 @@ oft={}
 
 def expand_series(series):
     ch1=series[0]
-    series_vpath='lost-scp-series' if ch1=='l' else f'scp-series-{int(ch1)+1}'
+    series_vpath='lost-scp-series' if ch1=='L' else f'scp-series-{int(ch1)+1}'
     return series_vpath
 
 def get_document(entity_id,redis_conn):
