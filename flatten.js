@@ -30,11 +30,11 @@ function filter_modules(html){
 }
 
 function parseDocument(element) {
-    function process_container(container,level){
+    function process_container(container,level,spacing){
         let elements=Array.from(container.childNodes)
             .map((child)=>flatten_node(child,level+1))
             .filter((text)=>text.length>0);
-        return elements.join("\n\n");
+        return elements.join(spacing);
     }
 
     function flatten_node(element,level){
@@ -45,40 +45,39 @@ function parseDocument(element) {
         }
 
         if(element.nodeType==1 && tagName=="body"){
-            return process_container(element,level);
+            return process_container(element,level,"\n\n");
         } else if (element.nodeType==1 && tagName=="div"){
             if (level==1 && element.classList.contains("footer-wikiwalk-nav")){
                 return "";
             } else {
-                return process_container(element,level);
+                return process_container(element,level,"\n\n");
             }
         } else if (element.nodeType==1 && tagName=="strong") {
-            return "**"+process_container(element)+"**";
+            return "**"+process_container(element,level,"")+"**";
         } else if (element.nodeType==1 && tagName=="em") {
-            return "*"+process_container(element)+"*";
+            return "*"+process_container(element,level,"")+"*";
         } else if (element.nodeType==1 && (tagName=="p"||tagName=="span")) {
-            let elements=Array.from(element.childNodes);
-            return elements.map((child)=>flatten_node(child,level+1))
-                .filter((text)=>text.length>0)
-                .join("");
+            return process_container(element,level,"");
         } else if (element.nodeType==1 && tagName=="br"){
             let parentTagName=element.parentElement.tagName.toLowerCase();
             if(parentTagName=="p"||parentTagName=="span") return "\n\n";
             else return "\u200c";
         } else if (element.nodeType==1 && tagName=="blockquote") {
-            return "```\n"+process_container(element,level).trim()+"\n```";
+            return "```\n"+process_container(element,level,"").trim()+"\n```";
         } else if (element.nodeType==1 && (tagName=="wj-footnote-ref-marker"||tagName=="sup")){
-            return "<sup>"+process_container(element,level)+"</sup>";
+            return "<sup>"+process_container(element,level,"")+"</sup>";
         } else if (element.nodeType==1 && tagName=="sub"){
-            return "<sub>"+process_container(element,level)+"</sub>";
+            return "<sub>"+process_container(element,level,"")+"</sub>";
         } else if (element.nodeType==1 && (tagName=="ol"||tagName=="ul")){
             return process_container(element,level);
         } else if (element.nodeType==1 && tagName=="li"){
             if(element.parentElement.tagName.toLowerCase()=="ol"){
-                return element.getAttribute("data-id")+". "+process_container(element,level);
+                return element.getAttribute("data-id")+". "+process_container(element,level,"\n");
             } else {
-                return "* "+process_container(element,level);
+                return "* "+process_container(element,level,"\n");
             }
+        } else if (element.nodeType==1 && tagName=="a"){
+            return process_container(element,level,"");
         } else if (element.nodeType==3){
             return element.textContent;
         } else {
