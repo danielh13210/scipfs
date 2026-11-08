@@ -1,0 +1,7 @@
+#!/bin/bash
+cd "$(dirname $0)"
+dump="$(mktemp)"
+echo $1 | nc localhost 9999 > $dump
+head -n -1 $dump | ../scp-cleanfetch/target/debug/scp-cleanfetch stdin | head -n -1
+tail -n 1 $dump
+rm $dump

@@ -9,7 +9,7 @@ this_dir=os.path.dirname(__file__)
 def get_document(entity_id,redis_conn):
     # transparent cache
     entity_id=entity_id.lower()
-    data=subprocess.check_output([os.path.join(this_dir,"scp-cleanfetch","target","debug","scp-cleanfetch"),entity_id],text=True)
+    data=subprocess.check_output([os.path.join(this_dir,"backends",os.environ.get('BACKEND','crom')),entity_id],text=True)
     lines=data.splitlines()
     html='\n'.join(lines[:-1])
     creation_date=lines[-1][12:]
